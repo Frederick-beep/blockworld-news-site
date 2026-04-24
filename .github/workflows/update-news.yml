@@ -1,0 +1,32 @@
+name: Update BlockWorld News
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # 每3小时更新一次
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install feedparser
+
+      - name: Fetch news and generate HTML
+        run: python generate.py
+
+      - name: Commit and push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add index.html
+          git commit -m "Auto: Update news $(date -u +'%Y-%m-%d %H:%M UTC')" || echo "No changes"
+          git push

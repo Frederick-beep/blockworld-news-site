@@ -1,0 +1,344 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+BlockWorld - Professional Layout + More Sources
+"""
+
+import feedparser
+import html
+import re
+import json
+from datetime import datetime
+
+# More RSS sources
+RSS_FEEDS = {
+    "CoinDesk": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "The Block": "https://www.theblock.co/rss.xml",
+    "Decrypt": "https://decrypt.co/feed",
+    "CryptoSlate": "https://cryptoslate.com/feed/",
+    "Bitcoinist": "https://bitcoinist.com/feed/",
+    "CoinTelegraph": "https://cointelegraph.com/rss",
+    "CryptoNews": "https://cryptonews.com/rss/",
+    "BitcoinMagazine": "https://bitcoinmagazine.com/feed",
+    "Blockworks": "https://blockworks.co/feed/",
+    "The Defiant": "https://thedefiant.io/feed",
+}
+
+CATEGORY_KEYWORDS = {
+    "Bitcoin": ["bitcoin", "btc", "satoshi", "halving", "mining"],
+    "Ethereum": ["ethereum", "eth", "ether", "gas", "layer 2", "rollup", "evm"],
+    "DeFi": ["defi", "lending", "borrowing", "yield", "uniswap", "aave", "compound"],
+    "NFT": ["nft", "opensea", "blur", "digital art", "collectible"],
+    "Web3": ["web3", "dao", "governance"],
+    "Regulation": ["sec", "regulation", "law", "legal", "compliance", "lawsuit"],
+    "Tech": ["protocol", "developer", "node", "infrastructure"],
+    "Opinion": ["opinion", "analysis", "prediction", "expert"],
+}
+
+def categorize(title, summary):
+    text = (title + " " + summary).lower()
+    categories = []
+    for cat, keywords in CATEGORY_KEYWORDS.items():
+        for kw in keywords:
+            if kw in text:
+                categories.append(cat)
+                break
+    return categories[:2] if categories else ["Crypto"]
+
+def extract_summary(entry):
+    summary = entry.get("summary", "") or entry.get("description", "") or ""
+    summary = re.sub(r'<[^>]+>', '', summary)
+    summary = html.unescape(summary).strip()[:200]
+    return summary
+
+def fetch_news():
+    all_news = []
+    now = datetime.now()
+    print("Fetching blockchain news...")
+    for source, url in RSS_FEEDS.items():
+        try:
+            print(f"  {source}...")
+            feed = feedparser.parse(url)
+            for entry in feed.entries[:12]:
+                title = html.unescape(entry.get("title", ""))
+                summary = extract_summary(entry)
+                cats = categorize(title, summary)
+                news = {
+                    "id": len(all_news),
+                    "title": title,
+                    "link": entry.get("link", ""),
+                    "source": source,
+                    "summary": summary,
+                    "categories": cats,
+                    "time": now.strftime("%H:%M"),
+                }
+                all_news.append(news)
+        except:
+            print(f"  Failed: {source}")
+    print(f"Total: {len(all_news)} articles")
+    return all_news
+
+def get_source_color(source):
+    colors = {
+        "CoinDesk": "#1386e2", "The Block": "#1a1a1a", "Decrypt": "#22c55e",
+        "CryptoSlate": "#f97316", "Bitcoinist": "#f7931a", "CoinTelegraph": "#2876bd",
+        "CryptoNews": "#e84142", "BitcoinMagazine": "#f7931a", "Blockworks": "#8b5cf6",
+        "The Defiant": "#10b981",
+    }
+    return colors.get(source, "#8b5cf6")
+
+def make_tag(cat):
+    cls = cat.lower() if cat.lower() in ["bitcoin","ethereum","defi","nft","web3","regulation","tech","opinion"] else "crypto"
+    return f'<span class="tag tag-{cls}">{cat}</span>'
+
+def generate_html(news_list):
+    now = datetime.now()
+    featured = news_list[0] if news_list else None
+    
+    flash_items = ""
+    for n in news_list[:15]:
+        c = get_source_color(n["source"])
+        flash_items += f'<div class="flash-item"><span class="flash-time">{n["time"]}</span><span class="flash-source" style="background:{c}">{n["source"]}</span><a href="{n["link"]}" target="_blank">{n["title"]}</a></div>'
+    
+    trending = ""
+    for i, n in enumerate(news_list[:8], 1):
+        trending += f'<div class="trending-item"><span class="trending-num">{i}</span><div class="trend-content"><a href="{n["link"]}" target="_blank">{n["title"]}</a><span class="trend-src">{n["source"]}</span></div></div>'
+    
+    btc_n = [n for n in news_list if "Bitcoin" in n["categories"]][:5]
+    eth_n = [n for n in news_list if "Ethereum" in n["categories"]][:5]
+    defi_n = [n for n in news_list if "DeFi" in n["categories"]][:5]
+    nft_n = [n for n in news_list if "NFT" in n["categories"]][:5]
+    
+    def cat_sec(title, tag, color, news):
+        items = "".join([f'<div class="cat-item"><span class="cat-dot" style="background:{get_source_color(n["source"])}"></span><div class="cat-content"><a href="{n["link"]}" target="_blank">{n["title"]}</a><div class="cat-meta">{"".join([make_tag(c) for c in n["categories"]])}<span class="cat-time">{n["time"]}</span></div></div></div>' for n in news])
+        return f'<div class="cat-section"><div class="cat-header"><h3>{title}</h3><span class="cat-badge" style="background:{color}">{tag}</span></div><div class="cat-list">{items}</div></div>'
+    
+    cards = "".join([f'<div class="news-card"><div class="news-source" style="color:{get_source_color(n["source"])}">{n["source"]}</div><h3><a href="{n["link"]}" target="_blank">{n["title"]}</a></h3><p class="news-summary">{n["summary"]}</p><div class="news-meta"><span class="news-tags">{"".join([make_tag(c) for c in n["categories"]])}</span><span class="news-time">{n["time"]}</span></div></div>' for n in news_list[:24]])
+    
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlockWorld - #1 Blockchain & Crypto News</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{{--bg:#0a0a0b;--bg2:#0f0f11;--card:#141418;--card-h:#1a1a1f;--bd:#1f1f24;--text:#fff;--txt:#a0a0a8;--muted:#6b6b73;--orange:#f7931a;--blue:#3b82f6;--green:#10b981;--red:#ef4444}}
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font-family:Inter,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}}
+a{{text-decoration:none;color:inherit}}
+.header{{background:var(--bg2);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:1000;backdrop-filter:blur(20px)}}
+.header-main{{max-width:1400px;margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center}}
+.logo{{display:flex;align-items:center;gap:12px}}
+.logo-icon{{width:40px;height:40px;background:linear-gradient(135deg,var(--orange),#fbbf24);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.4em}}
+.logo-text{{font-size:1.5em;font-weight:800;background:linear-gradient(135deg,var(--orange),#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
+.live{{display:flex;align-items:center;gap:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);padding:8px 16px;border-radius:24px;font-size:0.8em;font-weight:600;color:#ef4444}}
+.live-dot{{width:8px;height:8px;background:#ef4444;border-radius:50%;animation:pulse 1.5s infinite}}
+@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
+.nav{{background:var(--bg);border-top:1px solid var(--bd)}}
+.nav-inner{{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;overflow-x:auto}}
+.nav-item{{padding:14px 24px;font-size:0.9em;font-weight:500;color:var(--txt);white-space:nowrap;border-bottom:2px solid transparent;transition:all .2s;cursor:pointer}}
+.nav-item:hover,.nav-item.active{{color:var(--text);border-bottom-color:var(--orange)}}
+.price-bar{{background:var(--card);border-bottom:1px solid var(--bd);padding:12px 0}}
+.price-inner{{max-width:1400px;margin:0 auto;padding:0 24px;display:flex;gap:32px;overflow-x:auto}}
+.price-item{{display:flex;align-items:center;gap:8px;font-size:0.9em;white-space:nowrap}}
+.price-btc{{color:var(--orange)}}.price-eth{{color:#627eea}}.price-sol{{color:#9945ff}}.up{{color:var(--green)}}.down{{color:var(--red)}}
+.main{{max-width:1400px;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr 340px;gap:24px}}
+.featured{{background:linear-gradient(135deg,var(--card),var(--card-h));border:1px solid var(--bd);border-radius:16px;overflow:hidden;display:grid;grid-template-columns:1fr 280px;min-height:300px;margin-bottom:24px}}
+.featured-con{{padding:32px;display:flex;flex-direction:column;justify-content:center}}
+.badge{{display:inline-flex;align-items:center;gap:8px;background:var(--orange);color:#000;padding:6px 14px;border-radius:20px;font-size:0.75em;font-weight:700;text-transform:uppercase;width:fit-content;margin-bottom:16px}}
+.featured-title{{font-size:1.6em;font-weight:700;line-height:1.3;margin-bottom:16px}}
+.featured-title a:hover{{color:var(--orange)}}
+.featured-meta{{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:0.85em}}
+.featured-img{{background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;font-size:5em}}
+.flash{{background:var(--card);border:1px solid var(--bd);border-radius:16px;overflow:hidden;margin-bottom:24px}}
+.flash-hdr{{padding:20px 24px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,rgba(249,147,26,0.08),transparent)}}
+.flash-title{{font-size:1.1em;font-weight:700;display:flex;align-items:center;gap:10px}}
+.flash-list{{max-height:350px;overflow-y:auto}}
+.flash-item{{padding:14px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;gap:12px;transition:background .2s}}
+.flash-item:hover{{background:var(--card-h)}}
+.flash-item .flash-time{{width:45px;flex-shrink:0;color:var(--orange);font-weight:600;font-size:0.85em}}
+.flash-item .flash-source{{width:85px;flex-shrink:0;font-size:0.7em;font-weight:600;padding:3px 8px;border-radius:4px;color:#fff;text-align:center}}
+.flash-item a{{flex:1;font-size:0.9em;line-height:1.4}}
+.flash-item a:hover{{color:var(--orange)}}
+.cat-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px}}
+.cat-section{{background:var(--card);border:1px solid var(--bd);border-radius:16px;overflow:hidden}}
+.cat-hdr{{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}}
+.cat-hdr h3{{font-size:1em;font-weight:700}}
+.cat-badge{{font-size:0.7em;font-weight:700;padding:4px 10px;border-radius:6px;color:#000}}
+.cat-list{{padding:8px}}
+.cat-item{{padding:12px;border-radius:8px;display:flex;gap:10px;transition:background .2s}}
+.cat-item:hover{{background:var(--card-h)}}
+.cat-dot{{width:8px;height:8px;border-radius:50%;margin-top:6px;flex-shrink:0}}
+.cat-content{{flex:1}}
+.cat-content a{{font-size:0.85em;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.cat-content a:hover{{color:var(--orange)}}
+.cat-meta{{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}}
+.cat-time{{font-size:0.7em;color:var(--muted)}}
+.news-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px}}
+.news-card{{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:20px;transition:all .2s}}
+.news-card:hover{{border-color:var(--orange);transform:translateY(-2px)}}
+.news-source{{font-size:0.8em;font-weight:700;margin-bottom:8px}}
+.news-card h3{{font-size:1em;font-weight:600;line-height:1.4;margin-bottom:10px}}
+.news-card h3 a:hover{{color:var(--orange)}}
+.news-summary{{color:var(--txt);font-size:0.85em;line-height:1.5;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
+.news-meta{{display:flex;justify-content:space-between;align-items:center}}
+.news-tags{{display:flex;gap:6px;flex-wrap:wrap}}
+.news-time{{font-size:0.8em;color:var(--muted)}}
+.tag{{font-size:0.65em;font-weight:600;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,0.1)}}
+.tag-bitcoin{{background:rgba(247,147,26,0.2);color:#f7931a}}
+.tag-ethereum{{background:rgba(98,126,234,0.2);color:#627eea}}
+.tag-defi{{background:rgba(16,185,129,0.2);color:#10b981}}
+.tag-nft{{background:rgba(236,72,153,0.2);color:#ec4899}}
+.tag-web3{{background:rgba(139,92,246,0.2);color:#8b5cf6}}
+.tag-regulation{{background:rgba(239,68,68,0.2);color:#ef4444}}
+.tag-tech{{background:rgba(59,130,246,0.2);color:#3b82f6}}
+.tag-opinion{{background:rgba(245,158,11,0.2);color:#f59e0b}}
+.tag-crypto{{background:rgba(255,255,255,0.1);color:var(--txt)}}
+.sidebar{{display:flex;flex-direction:column;gap:20px}}
+.s-card{{background:var(--card);border:1px solid var(--bd);border-radius:16px;overflow:hidden}}
+.s-hdr{{padding:16px 20px;border-bottom:1px solid var(--bd)}}
+.s-hdr h3{{font-size:1em;font-weight:700}}
+.s-body{{padding:12px}}
+.trend-item{{padding:12px;border-radius:10px;display:flex;gap:12px;align-items:flex-start;transition:background .2s}}
+.trend-item:hover{{background:var(--card-h)}}
+.trend-num{{width:28px;height:28px;background:linear-gradient(135deg,var(--orange),#fbbf24);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85em;color:#000;flex-shrink:0}}
+.trend-content a{{font-size:0.9em;font-weight:500;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.trend-content a:hover{{color:var(--orange)}}
+.trend-src{{font-size:0.75em;color:var(--muted);margin-top:4px;display:block}}
+.market-row{{padding:14px 12px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}}
+.market-row:last-child{{border-bottom:none}}
+.market-coin{{display:flex;align-items:center;gap:10px}}
+.market-icon{{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2em}}
+.market-name{{font-weight:600;font-size:0.9em}}
+.market-sym{{font-size:0.75em;color:var(--muted)}}
+.market-price{{text-align:right}}
+.market-value{{font-weight:600;font-size:0.95em}}
+.market-change{{font-size:0.8em;font-weight:600}}.m-up{{color:var(--green)}}.m-down{{color:var(--red)}}
+.links{{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}}
+.q-link{{background:var(--card-h);border-radius:10px;padding:14px;text-align:center;font-size:0.85em;font-weight:500;transition:all .2s}}
+.q-link:hover{{background:var(--orange);color:#000;transform:translateY(-2px)}}
+.footer{{background:var(--bg2);border-top:1px solid var(--bd);padding:40px 24px;margin-top:40px;text-align:center}}
+.footer-logo{{font-size:1.5em;font-weight:800;background:linear-gradient(135deg,var(--orange),#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px}}
+.footer-links{{display:flex;justify-content:center;gap:32px;margin-bottom:20px;flex-wrap:wrap}}
+.footer-links a{{color:var(--txt);font-size:0.9em}}
+.footer-links a:hover{{color:var(--orange)}}
+.footer-copy{{color:var(--muted);font-size:0.8em}}
+.update{{text-align:center;padding:16px;color:var(--muted);font-size:0.8em;background:var(--card);border-radius:8px;margin-top:20px}}
+.update span{{color:var(--orange)}}
+.stats{{display:flex;justify-content:center;gap:40px;padding:20px;margin-bottom:20px;background:var(--card);border-radius:12px;border:1px solid var(--bd)}}
+.stat{{text-align:center}}
+.stat-val{{font-size:1.5em;font-weight:700;color:var(--orange)}}
+.stat-label{{font-size:0.8em;color:var(--muted)}}
+.filter{{background:var(--card);border-radius:12px;padding:12px;margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap}}
+.filter-btn{{padding:8px 16px;border:1px solid var(--bd);background:transparent;color:var(--txt);border-radius:20px;font-size:0.85em;font-weight:500;cursor:pointer;transition:all .2s}}
+.filter-btn:hover,.filter-btn.active{{background:var(--orange);color:#000;border-color:var(--orange)}}
+.hidden{{display:none!important}}
+::-webkit-scrollbar{{width:6px;height:6px}}
+::-webkit-scrollbar-track{{background:var(--bg)}}
+::-webkit-scrollbar-thumb{{background:var(--bd);border-radius:3px}}
+@media(max-width:1200px){{.main{{grid-template-columns:1fr}}.sidebar{{display:none}}}}
+@media(max-width:768px){{.featured{{grid-template-columns:1fr}}.featured-img{{display:none}}.cat-grid{{grid-template-columns:1fr}}.news-grid{{grid-template-columns:1fr}}}}
+</style>
+</head>
+<body>
+<header class="header">
+<div class="header-main">
+<div class="logo"><div class="logo-icon">⛓️</div><div class="logo-text">BlockWorld</div></div>
+<div class="live"><span class="live-dot"></span>LIVE UPDATES</div>
+</div>
+<nav class="nav"><div class="nav-inner">
+<div class="nav-item active">Home</div><div class="nav-item">Markets</div><div class="nav-item">Bitcoin</div><div class="nav-item">Ethereum</div><div class="nav-item">DeFi</div><div class="nav-item">NFT</div><div class="nav-item">Web3</div><div class="nav-item">Regulation</div><div class="nav-item">Opinion</div>
+</div></nav>
+</header>
+<div class="price-bar"><div class="price-inner">
+<div class="price-item price-btc">₿ BTC <b>$67,234</b> <span class="up">+2.34%</span></div>
+<div class="price-item price-eth">Ξ ETH <b>$3,456</b> <span class="down">-0.56%</span></div>
+<div class="price-item">🔵 USDC <b>$1.00</b> <span class="up">+0.01%</span></div>
+<div class="price-item">◎ BNB <b>$598</b> <span class="up">+1.23%</span></div>
+<div class="price-item price-sol">◆ SOL <b>$178</b> <span class="up">+5.67%</span></div>
+</div></div>
+<main class="main">
+<div class="content">
+<div class="stats">
+<div class="stat"><div class="stat-val">{len(news_list)}</div><div class="stat-label">Articles</div></div>
+<div class="stat"><div class="stat-val">{len(set(n['source'] for n in news_list))}</div><div class="stat-label">Sources</div></div>
+<div class="stat"><div class="stat-val">{now.strftime('%H:%M')}</div><div class="stat-label">Updated</div></div>
+</div>
+<div class="filter">
+<button class="filter-btn active" onclick="filterAll('all')">All</button>
+<button class="filter-btn" onclick="filterAll('Bitcoin')">Bitcoin</button>
+<button class="filter-btn" onclick="filterAll('Ethereum')">Ethereum</button>
+<button class="filter-btn" onclick="filterAll('DeFi')">DeFi</button>
+<button class="filter-btn" onclick="filterAll('NFT')">NFT</button>
+<button class="filter-btn" onclick="filterAll('Web3')">Web3</button>
+<button class="filter-btn" onclick="filterAll('Regulation')">Regulation</button>
+<button class="filter-btn" onclick="filterAll('Tech')">Tech</button>
+</div>
+{('<div class="featured"><div class="featured-con"><div class="badge">🔥 Featured</div><h2 class="featured-title"><a href="'+featured["link"]+'" target="_blank">'+featured["title"]+'</a></h2><p class="news-summary" style="display:block">'+featured["summary"]+'</p><div class="featured-meta"><span style="color:'+get_source_color(featured["source"])+';font-weight:600">'+featured["source"]+'</span><span>'+now.strftime("%Y-%m-%d %H:%M")+'</span></div></div><div class="featured-img">📰</div></div>') if featured else ''}
+<section class="flash">
+<div class="flash-hdr"><div class="flash-title"><span>⚡</span> Breaking News</div><span style="color:var(--muted);font-size:0.85em">Updated {now.strftime("%H:%M:%S")}</span></div>
+<div class="flash-list">{flash_items}</div>
+</section>
+<div class="cat-grid">{cat_sec("Bitcoin","BTC","#f7931a",btc_n) if btc_n else ''}{cat_sec("Ethereum","ETH","#627eea",eth_n) if eth_n else ''}{cat_sec("DeFi","DeFi","#10b981",defi_n) if defi_n else ''}{cat_sec("NFT","NFT","#ec4899",nft_n) if nft_n else ''}</div>
+<div class="news-grid">{cards}</div>
+<div class="update">Sources: <span>CoinDesk</span> • <span>The Block</span> • <span>Decrypt</span> • <span>CryptoSlate</span> • <span>Bitcoinist</span> • <span>CoinTelegraph</span> + More | Updated: <span>{now.strftime("%Y-%m-%d %H:%M:%S")}</span></div>
+</div>
+<aside class="sidebar">
+<div class="s-card"><div class="s-hdr"><h3>🔥 Trending</h3></div><div class="s-body">{trending}</div></div>
+<div class="s-card"><div class="s-hdr"><h3>📊 Markets</h3></div><div class="s-body" style="padding:0">
+<div class="market-row"><div class="market-coin"><div class="market-icon" style="background:#f7931a">₿</div><div><div class="market-name">Bitcoin</div><div class="market-sym">BTC</div></div></div><div class="market-price"><div class="market-value">$67,234</div><div class="market-change m-up">+2.34%</div></div></div>
+<div class="market-row"><div class="market-coin"><div class="market-icon" style="background:#627eea">Ξ</div><div><div class="market-name">Ethereum</div><div class="market-sym">ETH</div></div></div><div class="market-price"><div class="market-value">$3,456</div><div class="market-change m-down">-0.56%</div></div></div>
+<div class="market-row"><div class="market-coin"><div class="market-icon" style="background:#2775ca">🔵</div><div><div class="market-name">USD Coin</div><div class="market-sym">USDC</div></div></div><div class="market-price"><div class="market-value">$1.00</div><div class="market-change m-up">+0.01%</div></div></div>
+<div class="market-row"><div class="market-coin"><div class="market-icon" style="background:#e84142">◎</div><div><div class="market-name">BNB</div><div class="market-sym">BNB</div></div></div><div class="market-price"><div class="market-value">$598</div><div class="market-change m-up">+1.23%</div></div></div>
+<div class="market-row"><div class="market-coin"><div class="market-icon" style="background:#9945ff">◆</div><div><div class="market-name">Solana</div><div class="market-sym">SOL</div></div></div><div class="market-price"><div class="market-value">$178</div><div class="market-change m-up">+5.67%</div></div></div>
+</div></div>
+<div class="s-card"><div class="s-hdr"><h3>🔗 Tools</h3></div><div class="s-body"><div class="links">
+<a href="https://www.coingecko.com" target="_blank" class="q-link">CoinGecko</a>
+<a href="https://defillama.com" target="_blank" class="q-link">DeFiLlama</a>
+<a href="https://dune.com" target="_blank" class="q-link">Dune</a>
+<a href="https://etherscan.io" target="_blank" class="q-link">Etherscan</a>
+<a href="https://tradingview.com" target="_blank" class="q-link">TradingView</a>
+<a href="https://coinmarketcap.com" target="_blank" class="q-link">CMC</a>
+</div></div></div>
+<div class="s-card"><div class="s-hdr"><h3>📺 Community</h3></div><div class="s-body"><div class="links">
+<a href="#" class="q-link">Telegram</a>
+<a href="#" class="q-link">Twitter/X</a>
+<a href="#" class="q-link">Discord</a>
+<a href="#" class="q-link">YouTube</a>
+</div></div></div>
+</aside>
+</main>
+<footer class="footer">
+<div class="footer-logo">⛓️ BlockWorld</div>
+<div class="footer-links"><a href="#">About</a><a href="#">Contact</a><a href="#">Advertise</a><a href="#">Disclaimer</a><a href="#">Privacy</a></div>
+<p class="footer-copy">© 2026 BlockWorld | Your #1 Blockchain News Source</p>
+</footer>
+<script>
+let currentFilter='all';
+function filterAll(cat){{
+currentFilter=cat;
+document.querySelectorAll('.filter-btn').forEach(b=>{{b.classList.toggle('active',b.textContent===(cat==='all'?'All':cat))}});
+document.querySelectorAll('.news-card,.cat-section,.flash-item,.trend-item').forEach(el=>{{
+const cats=el.dataset.cats?JSON.parse(el.dataset.cats):[];
+el.classList.toggle('hidden',cat!=='all'&&!cats.includes(cat));
+}});
+}}
+setTimeout(()=>{{location.reload()}},5*60*1000);
+</script>
+</body>
+</html>'''
+    return html
+
+def main():
+    print("="*50)
+    print("BlockWorld - Professional Blockchain News")
+    print("="*50)
+    news_list = fetch_news()
+    print("\nGenerating HTML...")
+    with open("index.html","w",encoding="utf-8") as f:
+        f.write(generate_html(news_list))
+    print(f"Done! {len(news_list)} articles")
+
+if __name__=="__main__":
+    main()
