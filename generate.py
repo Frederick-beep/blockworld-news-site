@@ -318,10 +318,10 @@ a{{text-decoration:none;color:inherit}}
 <a href="https://coinmarketcap.com" target="_blank" class="q-link">CMC</a>
 </div></div></div>
 <div class="s-card"><div class="s-hdr"><h3>📺 Community</h3></div><div class="s-body"><div class="links">
-<a href="#" class="q-link">Telegram</a>
-<a href="#" class="q-link">Twitter/X</a>
-<a href="#" class="q-link">Discord</a>
-<a href="#" class="q-link">YouTube</a>
+<a href="https://t.me/blockworldnews" class="q-link" target="_blank" rel="noopener">Telegram</a>
+<a href="https://twitter.com/BlockWorldNews" class="q-link" target="_blank" rel="noopener">Twitter/X</a>
+<a href="https://discord.gg/blockworld" class="q-link" target="_blank" rel="noopener">Discord</a>
+<a href="https://youtube.com/@blockworldnews" class="q-link" target="_blank" rel="noopener">YouTube</a>
 </div></div></div>
 </aside>
 </main>
