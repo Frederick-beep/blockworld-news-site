@@ -121,6 +121,22 @@ def generate_html(news_list):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BlockWorld - #1 Blockchain & Crypto News</title>
+<link rel="canonical" href="https://parcelte.com/">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://parcelte.com/">
+<meta property="og:title" content="BlockWorld - #1 Blockchain & Crypto News">
+<meta property="og:description" content="Stay ahead with the latest blockchain, Bitcoin, Ethereum, DeFi, NFT and Web3 news from the top crypto outlets worldwide.">
+<meta property="og:image" content="https://parcelte.com/og-image.png">
+<meta property="og:site_name" content="BlockWorld">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@BlockWorldNews">
+<meta name="twitter:title" content="BlockWorld - #1 Blockchain & Crypto News">
+<meta name="twitter:description" content="Stay ahead with the latest blockchain, Bitcoin, Ethereum, DeFi, NFT and Web3 news.">
+<meta name="twitter:image" content="https://parcelte.com/og-image.png">
+<meta name="google-site-verification" content="googlec19fdaa6ddc1de5e.html">
+<script src="https://sdk.51.la/js-sdk-pro.min.js?id=3PkSDiJXlngtcbyW&ck=3PkSDiJXlngtcbyW" async></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{{--bg:#0a0a0b;--bg2:#0f0f11;--card:#141418;--card-h:#1a1a1f;--bd:#1f1f24;--text:#fff;--txt:#a0a0a8;--muted:#6b6b73;--orange:#f7931a;--blue:#3b82f6;--green:#10b981;--red:#ef4444}}
